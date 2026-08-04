@@ -1,228 +1,286 @@
 <div align="center">
 
-# GEO Toolkit for Claude Code
+# GEO 工具箱 · 三个 AI 搜索优化技能
 
-**AI 搜索优化技能包 — 让你的品牌内容被 ChatGPT、Perplexity、Gemini 引用**
+**让 ChatGPT、豆包、Perplexity、文心一言 这些 AI 在回答问题时主动提到你**
 
-[![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blue)](https://claude.ai/code) [![Python 3.7+](https://img.shields.io/badge/Python-3.7%2B-green)](https://www.python.org/) [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+[![Claude Code/Codex/Workbuddy  Skill](https://img.shields.io/badge/Claude%20Code-Skill-blue)](https://claude.ai/code) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 </div>
 
 ---
 
-## 这是什么
+## 一句话理解这个项目
 
-GEO（Generative Engine Optimization）是面向 AI 搜索引擎的内容优化方法论。就像 SEO 优化 Google 排名，GEO 优化你的内容在 ChatGPT、Perplexity、Gemini、Google AI Overview 等 AI 引擎中的引用率。
+**SEO 是让 Google 搜到你，GEO 是让 AI 在回答时"提到你"。**
 
-本项目提供两个 Claude Code Skill，覆盖 GEO 全流程：
+越来越多的用户不再打开百度、Google，而是直接问 AI：
+- "有哪些好用的国产跨境电商工具？"
+- "小米和华为哪个拍照更好？"
+- "帮我推荐一个适合一人公司的 AI 选品工具"
 
-| Skill | 定位 | 核心能力 |
-|-------|------|---------|
-| **geo-optimizer** | 全流程中枢 | Schema 生成、可读性检测、集群规划、可见度监控 |
-| **geo-content-optimizer** | 内容差距分析 | URL 分析、Google AI Overview 对比、优化建议 |
+如果 AI 在回答里提到了你的竞品，但没提到你——**你就在 AI 时代"隐形"了**。
 
-## 为什么需要 GEO
-
-- **BrightEdge** 分析了 100 万条 AI 回答：68% 的引用来自高权威站点，43% 来自带 Schema 标记的 FAQ
-- **McKinsey** 预测到 2026 年 40% 的搜索将通过 AI 完成
-- 不做 GEO，等于在 AI 时代"不存在"
-
-## 快速开始
-
-### 安装
-
-**方式一：使用 .skill 文件（推荐）**
-
-将 `geo-optimizer.skill` 下载后放入 Claude Code 的 skills 目录：
-
-```bash
-# macOS / Linux
-cp geo-optimizer.skill ~/.claude/skills/
-
-# Windows
-copy geo-optimizer.skill %USERPROFILE%\.claude\skills\
-```
-
-**方式二：克隆仓库**
-
-```bash
-git clone https://github.com/your-username/geo-start.git
-cd geo-start
-# skills 已在 .claude/skills/ 中就绪
-```
-
-### 前置要求
-
-- [Claude Code](https://claude.ai/code) 已安装并登录
-- Python 3.7+（用于运行辅助脚本）
-- 可见度测试支持双引擎：[Kimi (Moonshot) API Key](https://platform.moonshot.cn/)（默认，国内直连）或 [Perplexity API Key](https://docs.perplexity.ai/)（可选）
-
-### 30 秒体验
-
-在 Claude Code 中输入：
-
-```
-/geo-optimizer 帮我生成一个 Organization Schema，品牌名叫"星辰科技"，做跨境电商AI选品的
-
-/geo-optimizer 帮我全面检查geo情况，品牌名叫"高砖积木"，做积木的
-```
-
-或者分析一个网页：
-
-```
-/geo-content-optimizer https://your-website.com
-```
+本项目提供 **3 个 GEO 工具**（也叫 Skill），从轻量到重量级，帮你把内容做得让 AI 愿意引用。
 
 ---
 
-## 功能详解
+## 三个工具怎么选？
 
-### Skill 1: geo-optimizer — 全流程 GEO 工具
+| 你的情况 | 推荐工具 | 触发方式 |
+|---------|---------|---------|
+| 想给单篇文章/网站做一次 AI 体检 | **geo-content-optimizer** | `/geo-content-optimizer 你的网址` |
+| 第一次做 GEO，想要 AI 一步步带做 | **geo-optimizer** | `/geo-optimizer 我是做XX的，帮我开始` |
+| 想长期做 GEO（每月看数据、接客户、运营） | **geolook** | 全网深度geo调研，启动本地网页工作台，全程点点点 |
 
-通过 `/geo-optimizer` 触发，包含 5 大模块：
-
-#### 模块 A：结构化数据生成
-
-自动生成 7 类 JSON-LD Schema：
-
-```
-Organization    → 品牌实体："你是谁"
-FAQPage         → FAQ 问答：43% AI 引用来源
-TechArticle     → 文章结构化标记
-Person          → 作者 E-E-A-T 可信度信号
-@graph          → 作者+文章联合标记
-Citation        → 权威来源引用标记
-BreadcrumbList  → 导航层级结构
-```
-
-脚本用法：
-
-```bash
-# Organization Schema
-python scripts/schema_generator.py --type organization \
-  --name "品牌名" --description "描述" \
-  --knows-about "领域1" "领域2" --offers "产品描述"
-
-# FAQ Schema（从 JSON 文件读取）
-python scripts/schema_generator.py --type faq --input faq_pairs.json
-
-# 文章 Schema
-python scripts/schema_generator.py --type article \
-  --headline "标题" --author "作者" --date-published "2025-01-01"
-
-# 输出带 <script> 标签的 HTML
-python scripts/schema_generator.py --type organization \
-  --name "品牌" --description "描述" --wrap
-```
-
-FAQ 输入文件格式：
-
-```json
-[
-  {"question": "新手第一步应该做什么？", "answer": "具体答案，含数据..."},
-  {"question": "A 和 B 有什么区别？", "answer": "具体答案，含案例..."}
-]
-```
-
-#### 模块 B：内容 AI 可读性检测
-
-```bash
-python scripts/readability_checker.py --text "你的内容"
-python scripts/readability_checker.py --file article.txt
-python scripts/readability_checker.py --text "内容" --json
-```
-
-输出示例：
-
-```
-=== AI 可读性检查报告 ===
-总段落数: 8
-平均句长: 21字 [OK]
-营销词命中: 无 OK
-包含问句: [OK]
-数据引用: 5个数字 [OK]
-综合评分: 高 (6/7)
-```
-
-#### 模块 C：Pillar Page 集群规划
-
-1 个核心主题 + 5-10 个子主题的内容架构，生成内部链接集群 HTML 和站点地图 JSON。
-
-#### 模块 D：可见度测试与报告
-
-支持双引擎：**Kimi**（默认，国内直连）和 **Perplexity**（海外）。
-
-```bash
-# 使用 Kimi 引擎（默认，国内直连）
-python scripts/visibility_tester.py \
-  --engine kimi \
-  --brand "品牌名" \
-  --keywords "关键词1" "关键词2" \
-  --api-key "sk-xxxxx"
-
-# 使用环境变量传 Key
-export KIMI_API_KEY="sk-xxxxx"
-python scripts/visibility_tester.py --brand "品牌名" --keywords "关键词"
-
-# 使用 Perplexity 引擎
-python scripts/visibility_tester.py \
-  --engine perplexity \
-  --brand "品牌名" \
-  --keywords "关键词1" "关键词2" \
-  --api-key "pplx-xxxxx"
-
-# 自定义查询模板
-python scripts/visibility_tester.py \
-  --brand "高砖积木" \
-  --keywords "积木品牌" "国产积木" \
-  --query "{keyword}有哪些值得推荐的品牌？"
-
-# 季度趋势报告
-python scripts/geo_report_generator.py \
-  --history visibility_history.json \
-  --output report.md
-```
-
-**引擎对比：**
-
-| 维度 | Kimi (默认) | Perplexity |
-|------|-------------|------------|
-| 国内可用性 | 直连，无需翻墙 | 需翻墙 |
-| API 获取 | platform.moonshot.cn | perplexity.ai |
-| SDK 依赖 | `openai` (`pip install openai`) | `requests` (`pip install requests`) |
-| 搜索方式 | 内置 `$web_search` 联网搜索 | sonar-pro 模型 |
-| 环境变量 | `KIMI_API_KEY` | `PERPLEXITY_API_KEY` |
-
-#### 模块 E：内容差距分析
-
-自动调用 `/geo-content-optimizer` 对比 Google AI Overview，找出内容缺口。
+> 不确定？先用 **geo-content-optimizer** 跑一次你的网址看体检报告，再决定要不要继续。
 
 ---
 
-### Skill 2: geo-content-optimizer — 内容差距分析
+## 为什么这事现在很重要？
 
-通过 `/geo-content-optimizer <url>` 触发，零依赖，纯用 Claude 内置工具完成。
+- **68%** 的 AI 回答引用来自高权威网站（BrightEdge 100 万条 AI 回答研究）
+- **43%** 的引用来自带"问答"标记的页面
+- **麦肯锡** 预测：2026 年 40% 的搜索将通过 AI 完成
+- 现在不做 GEO ≈ 2015 年不做 SEO
 
-**工作流**：
+---
+
+## 工具一：geo-content-optimizer · 单页体检
+
+**用途**：给你一个网址，30 秒后告诉你"这个页面在 AI 眼里是什么水平"。
+
+**适合谁**：已经有官网、想看看自家页面有没有被 AI 注意到的人。
+
+**怎么用**：
+
+在 Claude Code/Codex/Workbuddy  里输入：
 
 ```
-抓取页面标题
-  → Google 查询扩展（多角度搜索）
-    → 提取核心搜索词
-      → 获取 Google AI Overview
-        → 搜索结果结构化摘要
-          → 对比分析，生成优化建议报告
+/geo-content-optimizer https://你的网址.com
 ```
 
-**输出**：
+**它会自动做 6 件事**：
+
+1. 抓取你页面的标题
+2. 用 Google 搜这个标题，看有哪些相关问题
+3. 提取出最核心的那个搜索词
+4. 拿到 Google AI 概览里 AI 写的答案
+5. 把 AI 答案和你页面内容对比
+6. 生成一份"差什么、补什么"的优化报告
+
+**会输出什么**：
+
+一份中文优化报告，放在 `output/你的域名/` 文件夹下，告诉你：
+
+- AI 提到了哪些点，你没提到（**内容缺口**）
+- AI 觉得重要的点，你说得不够（**深度不足**）
+- 具体改哪几段、加哪些 FAQ、补充哪些数据
+
+**特点**：
+- 不需要 Python、不需要 API Key
+- 完全靠 Claude Code/Codex/Workbuddy  自带工具
+- 跑一次大约 1-2 分钟
+
+---
+
+## 工具二：geo-optimizer · 一步一步带你做 GEO
+
+**用途**：GEO 全流程"陪练"，从零开始帮你把品牌内容做成 AI 喜欢的形式。
+
+**适合谁**：第一次接触 GEO、希望 AI 引导一步步做的人。
+
+**怎么用**：
+
+在 Claude Code/Codex/Workbuddy  里说一句话，比如：
 
 ```
-output/
-  your-website-com/
-    report.md                  ← 最终优化报告（对比表格 + 行动建议）
-    ai_overview.md             ← Google AI Overview 内容
-    query_fanout.md            ← 原始搜索扩展结果
-    query_fanout_summary.md    ← 搜索结果摘要
+/geo-optimizer 我是做"国产积木"的，叫高砖积木，帮我系统做一下 GEO
+```
+
+或者更简单：
+
+```
+/geo-optimizer 帮我做一下 GEO
+```
+
+**它会带你这 5 件事**（按需触发，不用一次全做）：
+
+### A. 帮你给品牌"做名片"
+
+生成一段结构化标记（叫 Schema），告诉 AI "你是谁、做什么、解决什么问题"。
+
+> 就像给 AI 一张你的"工商信息卡"，让 AI 介绍你时不会张冠李戴。
+
+### B. 检查文章"AI 友不友好"
+
+把你的文章丢给它，它会告诉你：
+
+- 句子是不是太长（AI 读不懂长句）
+- 有没有堆砌"创新、领先、卓越"这种空话
+- 有没有问句、有没有具体数据
+
+并给一份"AI 可读性评分"。
+
+### C. 规划内容集群
+
+帮你设计"1 个核心页 + 5-10 个子页"的内容结构，让 AI 一眼看出你们在某个领域很专业。
+
+### D. 测试"AI 看不看得见我"
+
+用搜索 API（默认接 Kimi，国内直连；也可选 Perplexity）模拟真实用户提问，看 AI 答案里有没有提到你的品牌。
+
+> 第一次跑：建立"基线"（AI 引用率多少）
+> 每月跑：看趋势（变好了还是变差了）
+> 每季度跑：生成趋势报告
+
+### E. 自动调起"工具一"分析 URL
+
+如果你给了具体网址，它会自动跳到 geo-content-optimizer 做深度分析。
+
+**特点**：
+
+- 大部分功能零依赖（不需要 API Key）
+- 只有"测 AI 看不看见我"需要 API Key（Kimi 国内可免费申请）
+- 像聊天一样一步步做，不要求你懂技术
+
+---
+
+## 工具三：geolook · GEO 运营平台
+
+继承和深度改造：https://github.com/aigclink/geolook
+
+**用途**：把 GEO 当"持续生意"来做。带可视化的网页工作台，每周/每月自动跑全套流程，看数据、管任务、出给客户的交付物。
+
+**适合谁**：
+
+- 给客户做 GEO 服务的代理/咨询公司
+- 想长期跟踪自家品牌在 AI 里表现的市场/品牌团队
+- 已经知道 GEO 是什么、想要"重型武器"的人
+
+**怎么用（3 步跑起来）**：
+
+1. **下载项目**，安装 3 个第三方库
+2. **启动skill**：全网全AI深度调研，全是图形界面
+3. **配 1 个 API Key**（推荐 302.AI，一把 Key 调通 10 个 AI 平台）
+
+详见 [geolook/README.md](skills/geolook/README.md) 里的部署教程。
+
+**它能做什么（看界面）**：
+
+### 现状 · AI 里你什么样
+
+- **引擎表现**：国内 7 个 + 海外 6 个 AI 引擎，告诉你每个引擎提到你的频率、位置、引用谁
+- **品牌提及分布**：你和竞品在 AI 答案里各占多少
+- **竞品对比**：哪些问题被竞品"抢走"了，哪些问题只有你能答
+
+### 诊断 · 为什么是这样
+
+- **站点体检**：6 维打分（能不能抓到、有没有结构化、缺不缺关键内容、权威性够不够）
+- **阵地地图**：告诉你应该去哪些网站/平台"留名"（知乎、小红书、维基、G2、Reddit...）
+- **品牌事实库**：全公司统一口径的"品牌资料库"，所有对外内容都从这里取
+
+### 提升 · 该做什么
+
+- **行动计划**：自动生成带"验收标准"的任务清单（做完没做完系统说了算）
+- **内容工作台**：左边给"必含要点"，右边实时打分你这篇文章"AI 愿不愿意引用"
+- **资产一键生成**：把 Schema、FAQ、定义块自动生成 HTML，直接给开发部署
+
+### 成效 · 有用没用
+
+- **效果验收**：每条任务自动重测，做没做对系统判定
+- **客户交付包**：一键打包诊断报告 + 优化方案 + 执行方案 + 任务表，直接发客户
+
+**和前两个工具有什么不同**？
+
+| 维度 | geo-content-optimizer | geo-optimizer | geolook |
+|------|---------------------|---------------|---------|
+| 适合场景 | 单页体检 | 一步步带你做 | 长期 GEO 运营 |
+| 启动难度 | 一句话 | 一句话 | 装环境 + 配 Key |
+| 周期性 | 单次 | 按需 | 每周/每月自动 |
+| 协作能力 | 个人 | 个人 | 多项目切换 |
+| 给客户交付 | 报告 | 报告 | 完整交付包 |
+| 部署形式 | Claude Code/Codex/Workbuddy  内 | Claude Code/Codex/Workbuddy  内 | 本地网页工作台 |
+
+---
+
+## 安装
+
+### 准备工作
+
+1. 装好 [Claude Code/Codex/Workbuddy ](https://claude.ai/code) 并登录
+2. 会基本的命令行操作（复制粘贴命令）
+
+### 安装前两个 Skill（推荐，零成本）
+
+把 `skills/geo-optimizer` 和 `skills/geo-content-optimizer` 整个文件夹复制到 Claude Code/Codex/Workbuddy  的 skills 目录：
+
+- **macOS/Linux**：`~/.claude/skills/`
+- **Windows**：`%USERPROFILE%\.claude\skills\`
+
+重启 Claude Code/Codex/Workbuddy ，输入 `/geo-optimizer` 或 `/geo-content-optimizer` 就能用。
+
+### 安装第三个 Skill（geolook，需要本地环境）
+
+AI会自动化帮忙安装环境：Python 3.9+ 和 3 个常用库（requests、beautifulsoup4、lxml），详细步骤看 [geolook/README.md](skills/geolook/README.md)。
+
+### 简易安装方法:
+[Claude Code/Codex/Workbuddy ]直接给 github地址让AI帮忙安装 skill 则可以，不需要关心其他。
+
+---
+
+## 常见问题
+
+**Q：完全不懂技术，能用吗？**
+
+A：前两个 Skill 完全不用写代码，对话就行。geolook 稍微需要302.AI Key，但装好之后全程是浏览器界面。
+
+**Q：必须 3 个都装吗？**
+
+A：不用。按你的需求选一个就行：
+- 只想看看自家页面怎么样 → 只装 geo-content-optimizer
+- 想系统化做一下 GEO → 装 geo-optimizer
+- 想长期运营或接客户 → 装 geolook
+
+**Q：GEO 多久能见效？**
+
+A：通常 **2-4 周** 开始在 AI 答案里看到变化。AI 引擎更新有延迟，不是改完就立刻有效果。geolook 平台的"季度报告"就是帮你看这个趋势的。
+
+**Q：AI 引擎答案里提到我，访问量会变多吗？**
+
+A：会，但方式不同。AI 答案里点链接来的用户更精准（他们已经看了 AI 介绍，对你有基本信任）。同时你的"品牌曝光"会变多——即使这次没点，下次看到名字更可能搜索你。
+
+**Q：要花多少钱？**
+
+A：
+- **前两个 Skill**：基本零成本，只有"测试 AI 看不看见你"需要 API Key。Kimi 国内可申请免费额度，Perplexity 海外按量计费很便宜。
+- **geolook**：开源免费，只花你 AI 引擎 API 采样费。配 302.AI 一把 Key 的话，每月几十块就够跑全平台。
+
+**Q：GEO 和 SEO 冲突吗？**
+
+A：不冲突，做好 GEO 通常对 SEO 也有帮助（结构化、权威性、原创数据——SEO 也喜欢）。可以一起做。
+
+**Q：内容一定要自己写吗？**
+
+A：不一定。geolook 里有"AI 初稿"功能，但生成的初稿**必须人工核实事实**才能用——AI 编造数字和案例是常见坑。工具帮你提效，但不能替你担责。
+
+---
+
+## 我应该从哪开始？
+
+```
+你是新接触 GEO
+   ↓
+用 geo-content-optimizer 跑一下自己官网
+   ↓
+看报告，了解 AI 现在怎么看你
+   ↓
+    ┌──────────────┬──────────────┐
+    ↓              ↓              ↓
+看完就完了      想自己动手     想长期运营
+   ↓              ↓              ↓
+ 结束！       geo-optimizer    geolook
+              一步步带你        自动化运营
 ```
 
 ---
@@ -230,134 +288,23 @@ output/
 ## 项目结构
 
 ```
-geo-start/
-├── README.md                              ← 你正在看的文件
-├── geo-optimizer.skill                    ← 可分发的 Skill 包
-│
-├── .claude/skills/
-│   ├── geo-optimizer/                     ← GEO 全流程工具
-│   │   ├── SKILL.md                       # 主技能文件（触发条件 + 工作流）
-│   │   ├── scripts/
-│   │   │   ├── schema_generator.py        # JSON-LD Schema 生成（7 种类型）
-│   │   │   ├── readability_checker.py     # AI 可读性检测
-│   │   │   ├── visibility_tester.py       # AI 可见度测试（Kimi / Perplexity 双引擎）
-│   │   │   └── geo_report_generator.py    # 季度 GEO 报告
-│   │   ├── references/
-│   │   │   ├── geo-framework.md           # 10 步 GEO 框架完整参考
-│   │   │   ├── schema-templates.md        # 9 类 Schema 模板
-│   │   │   └── best-practices.md          # 最佳实践与部署清单
-│   │   └── assets/
-│   │       └── pillar-template.html       # Pillar Page 集群 HTML 模板
-│   │
-│   └── geo-content-optimizer/             ← 内容差距分析工具
-│       ├── SKILL.md                       # 6 阶段分析工作流
-│       └── README.md                      # 使用说明
+geo-ai-agent-main/
+├── README.md                       ← 你正在看的文件
+├── skills/
+│   ├── geo-content-optimizer/      ← 工具一：单页体检
+│   ├── geo-optimizer/              ← 工具二：全流程陪练
+│   └── geolook/                    ← 工具三：GEO 运营平台
+├── docs/                           ← 项目文档
+└── output/                         ← 历史分析报告样例
 ```
 
 ---
 
-## 使用场景
+## 致谢
 
-### 场景 1：首次 GEO 设置（全新品牌）
-
-```
-你：我有一个跨境电商的品牌叫"灵慧光智"，做 AI 选品工具的，怎么让 AI 搜索引擎引用我？
-
-Claude：
-  1. 收集品牌信息
-  2. → 生成 Organization Schema
-  3. → 引导创建 10 个 FAQ
-  4. → 生成 FAQ Schema
-  5. → 检测内容可读性
-  6. → 规划内容集群
-  7. → 首次可见度基线测试
-  8. → 输出完整部署清单
-```
-
-### 场景 2：优化已有网页
-
-```
-你：/geo-content-optimizer https://my-site.com/article
-
-Claude：自动完成 6 阶段分析，输出优化报告到 output/my-site-com/report.md
-```
-
-### 场景 3：月度监控
-
-```
-你：测试一下"灵慧光智"在 AI 搜索里的可见度
-
-Claude：调用 Kimi 联网搜索，检测多个关键词，结果自动存入历史记录
-```
-
-### 场景 4：季度复盘
-
-```
-你：生成一份 GEO 季度报告
-
-Claude：对比历史数据，输出引用率趋势 + 行动建议
-```
-
----
-
-## GEO 10 步框架速查
-
-| 步骤 | 操作 | 对应工具 |
-|------|------|---------|
-| 1. 实体转型 | Organization Schema | `schema_generator.py` |
-| 2. FAQ 生态 | ≥10 个 FAQ + Schema | `schema_generator.py` |
-| 3. 口语化写作 | 去营销腔、加数据 | `readability_checker.py` |
-| 4. 引用权威 | Citation Schema | `schema_generator.py` |
-| 5. Schema 全部署 | Article/Breadcrumb 等 | `schema_generator.py` |
-| 6. 内容集群 | Pillar Page 规划 | `pillar-template.html` |
-| 7. 多格式嵌入 | 图片 alt + 视频字幕 | 参考 `best-practices.md` |
-| 8. 可见度测试 | Kimi / Perplexity 双引擎 | `visibility_tester.py` |
-| 9. E-E-A-T | 作者 Schema | `schema_generator.py` |
-| 10. 季度迭代 | 趋势报告 | `geo_report_generator.py` |
-
----
-
-## 常见问题
-
-**Q：没有 API Key 能用吗？**
-
-A：只有可见度测试（模块 D）需要 API Key，其余所有功能零依赖。没有 Key 时 Claude 会提供手动测试指引。
-
-**Q：脚本需要安装第三方库吗？**
-
-A：`visibility_tester.py` 使用 Kimi 引擎需要 `openai`（`pip install openai`），使用 Perplexity 需要 `requests`（`pip install requests`）。其他三个脚本纯标准库。
-
-**Q：必须两个 Skill 都安装吗？**
-
-A：不必须。`geo-optimizer` 可独立使用。安装 `geo-content-optimizer` 后获得模块 E（URL 内容差距分析）的能力。
-
-**Q：支持哪些 AI 搜索引擎？**
-
-A：可见度测试支持 Kimi（国内直连）和 Perplexity（海外）双引擎。GEO 框架设计覆盖 ChatGPT、Perplexity、Gemini、Google AI Overview。
-
-**Q：Kimi 和 Perplexity 怎么选？**
-
-A：国内用户首选 Kimi，直连无需翻墙，注册即用。海外用户或有 Perplexity 账号的可直接用 Perplexity。
-
----
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request。
-
-1. Fork 本仓库
-2. 创建功能分支 (`git checkout -b feature/your-feature`)
-3. 提交更改 (`git commit -m 'Add your feature'`)
-4. 推送到分支 (`git push origin feature/your-feature`)
-5. 发起 Pull Request
-
-### 特别感谢：
-
-https://linux.do  佬友支持，
-
-https://liang.348349.xyz/  更多agent项目
-
-《Reddit GEO怎么做？10步AI搜索优化框架实战版》 https://mp.weixin.qq.com/s/q3oVi5BK6dl-7NYwkO97ug
+- [linux.do](https://linux.do) 佬友支持
+- [liang.348349.xyz](https://liang.348349.xyz/) 更多 agent 项目
+- 微信公众号文章：《Reddit GEO 怎么做？10 步 AI 搜索优化框架实战版》
 
 ## License
 
