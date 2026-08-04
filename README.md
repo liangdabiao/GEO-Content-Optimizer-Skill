@@ -31,7 +31,7 @@
 |---------|---------|---------|
 | 想给单篇文章/网站做一次 AI 体检 | **geo-content-optimizer** | `/geo-content-optimizer 你的网址` |
 | 第一次做 GEO，想要 AI 一步步带做 | **geo-optimizer** | `/geo-optimizer 我是做XX的，帮我开始` |
-| 想长期做 GEO（每月看数据、接客户、运营） | **geolook** | 全网深度geo调研，启动本地网页工作台，全程点点点 |
+| 想长期做 GEO（每月看数据、接客户、运营） | **geolook** | 1 geolook skill全网深度geo调研'小米品牌'。2 启动UI网页工作台 |
 
 > 不确定？先用 **geo-content-optimizer** 跑一次你的网址看体检报告，再决定要不要继续。
 
