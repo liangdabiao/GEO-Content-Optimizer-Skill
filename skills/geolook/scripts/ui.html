@@ -1288,7 +1288,7 @@ async function vSettings(){
       <button class="btn btn-secondary" onclick="editConfig()">编辑当前品牌配置</button>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:26px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:26px">
       <div class="card elev" style="padding:18px;gap:10px;border:1px solid var(--a700);box-shadow:0 0 0 1px var(--a700)">
         ${(()=>{
           const ai=(KEYS||[]).find(k=>k.code==='ai302ai');
@@ -1323,6 +1323,34 @@ async function vSettings(){
           `;
         })()}
       </div>
+      <div class="card elev" style="padding:18px;gap:10px;border:1px solid var(--a300);box-shadow:0 0 0 1px var(--a300)">
+        ${(()=>{
+          const or=(KEYS||[]).find(k=>k.code==='openrouter');
+          if(!or) return '';
+          const ok=or.ok, ktail=or.key_tail;
+          const models=or.models||[], unsupported=or.unsupported||[];
+          return `
+            <div><div style="font-size:15px;font-weight:500">🌐 OpenRouter 模式</div>
+              <div style="font-size:11.5px;color:var(--t600);margin-top:4px;line-height:1.55">${esc(or.note)}</div></div>
+            <div class="row" style="padding:4px 0;box-shadow:inset 0 -1px 0 var(--line)">
+              <span class="dot" style="background:${ok?'var(--a400)':'#595d6c'}"></span>
+              <span style="flex:1;font-size:13px">${ok?'✓ 已启用':'未启用'}${ktail?'（Key ····'+esc(ktail)+'）':''}</span>
+              <button class="btn btn-primary" style="font-size:12px;padding:3px 9px" onclick="editOpenrouter()">${ok?'修改配置':'启用 OpenRouter'}</button>
+              ${ok?`<button class="btn btn-ghost" style="font-size:12px;padding:3px 9px" onclick="disableOpenrouter()">关闭</button>`:''}
+            </div>
+            ${ok?`
+              <div style="font-size:12px;color:var(--t500)">已覆盖 <b>${models.length}</b> 个 LLM 平台
+                <span class="muted" style="font-size:11.5px;margin-left:6px">（独家：MiniMax-M3 1M 多模态 + bytedance-seed 豆包）</span></div>
+              <details style="margin-top:4px"><summary style="font-size:11.5px;color:var(--t500);cursor:pointer">查看 10 个 LLM 模型</summary>
+                <div style="margin-top:6px;font-size:11.5px;line-height:1.7">
+                  ${models.map(m=>`<div>· <code style="color:var(--a300)">${esc(m.code)}</code> → <code>${esc(m.label)}</code></div>`).join('')}
+                </div></details>
+            `:`
+              <div style="font-size:12px;color:var(--t400);line-height:1.55">未启用 OpenRouter 也能用。启用后 <b>1 把 Key</b> 解锁 10 个 LLM（含 M3 多模态 + bytedance-seed 豆包）。</div>
+            `}
+          `;
+        })()}
+      </div>
       <div class="card elev" style="padding:18px;gap:10px">
         <div><div style="font-size:15px;font-weight:500">运行任务</div>
           <div style="font-size:11.5px;color:var(--t600)">后台子进程执行，关掉页面也会跑完。同一项目同时只跑一个。</div></div>
@@ -1347,11 +1375,11 @@ async function vSettings(){
 
     <details style="margin-top:14px" id="adv-keys">
       <summary style="font-size:13.5px;font-weight:500;cursor:pointer;padding:10px 0;color:var(--t500)">
-        高级：各平台原生 Key（兜底，302.AI 模式下通常不用填）<span class="muted" style="font-size:11.5px;margin-left:6px">${(KEYS||[]).filter(k=>k.code!=='ai302ai'&&k.ok===true).length}/${(KEYS||[]).filter(k=>k.code!=='ai302ai'&&k.env).length} 已配</span>
+        高级：各平台原生 Key（兜底，聚合器模式下通常不用填）<span class="muted" style="font-size:11.5px;margin-left:6px">${(KEYS||[]).filter(k=>!k.aggregator&&k.ok===true).length}/${(KEYS||[]).filter(k=>!k.aggregator&&k.env).length} 已配</span>
       </summary>
       <div class="card elev" style="padding:18px;gap:10px;margin-top:8px">
-        <div style="font-size:11.5px;color:var(--t600)">想在 302.AI 之外直连某个平台（例如想用免费额度、想用自家企业 Key），在这里单独填。无 API 的引擎走人工采样表。</div>
-        ${(KEYS||[]).filter(k=>k.code!=='ai302ai').map((k,i)=>{
+        <div style="font-size:11.5px;color:var(--t600)">想在 302.AI / OpenRouter 之外直连某个平台（例如想用免费额度、想用自家企业 Key），在这里单独填。无 API 的引擎走人工采样表。</div>
+        ${(KEYS||[]).filter(k=>!k.aggregator).map((k,i)=>{
           const realI=(KEYS||[]).indexOf(k);
           return `<div class="row" style="padding:5px 0;box-shadow:inset 0 -1px 0 var(--line)">
             <span class="dot" style="background:${k.ok===true?'var(--a400)':k.ok===false?'#595d6c':'#3f424d'}"></span>
@@ -1583,6 +1611,90 @@ async function obEnableAi(){
     render();
   }else{toast('失败：'+(r.error||''),'err')}
 }
+async function obEnableOr(){
+  const k=document.getElementById('ob-orkey').value.trim();
+  if(!k){toast('请先粘贴 OpenRouter Key','err');return}
+  const r=await post('/api/openrouter',{action:'enable',api_key:k});
+  if(r.ok){
+    toast('已启用 OpenRouter 模式'+(r.note?'（已自动关闭 302.AI）':''),'ok');
+    KEYS=null;
+    render();
+  }else{toast('失败：'+(r.error||''),'err')}
+}
+
+/* ===================== OpenRouter 配置 ===================== */
+function editOpenrouter(){
+  const or=KEYS.find(k=>k.code==='openrouter');
+  if(!or){toast('加载失败，请刷新','err');return}
+  const models=or.models||[];
+  modal(`<h4 style="font-size:17px">🌐 OpenRouter 统一模式</h4>
+    <p class="muted" style="font-size:12.5px;margin:4px 0 12px;line-height:1.55">在 <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--a300)">openrouter.ai/keys</a> 申请一把 API Key，即可解锁 10 个 LLM 平台（含 MiniMax-M3 1M 多模态 + bytedance-seed 豆包系列）。</p>
+    <div class="field"><label>OpenRouter API Key${or.key_tail?'（已配 ····'+esc(or.key_tail)+'）':''}</label>
+      <input id="or-key" class="input" type="password" autocomplete="off" placeholder="sk-or-v1-...（留空保持不变）">
+      <div class="row" style="margin-top:4px;gap:4px">
+        <button class="btn btn-ghost" style="font-size:11px;padding:2px 8px" onclick="testOrKey()">测试 Key</button>
+        <span id="or-test-result" class="muted" style="font-size:11.5px"></span>
+      </div>
+    </div>
+    <details><summary style="font-size:12.5px;cursor:pointer;color:var(--t500);padding:6px 0">高级：覆盖 9 个 LLM 的模型（不填用 2026-08 默认）</summary>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
+        ${models.map(m=>`<div class="field" style="margin:0"><label style="font-size:11.5px">${esc(m.code)} <span class="muted">→ ${esc(m.label)}</span></label>
+          <input class="input or-model" data-code="${esc(m.code)}" data-env="${esc(m.env)}" placeholder="${esc(m.label)}" style="font-size:12px;padding:4px 8px"></div>`).join('')}
+      </div>
+    </details>
+    <div style="font-size:11.5px;color:var(--t500);margin-top:8px;padding:8px;background:var(--a900);border-radius:4px">
+      ℹ <b>与 302.AI 互斥</b>：启用 OpenRouter 时会自动关闭 302.AI 模式（两个聚合器只配一个）。
+    </div>
+    <div class="row" style="justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveOpenrouter()">保存</button></div>`);
+}
+async function testOrKey(){
+  const k=$('#or-key').value.trim();
+  if(!k||!k.startsWith('sk-or-')){$('#or-test-result').textContent='请先填入 Key（sk-or-v1-...）';return}
+  $('#or-test-result').textContent='测试中…';
+  const r=await post('/api/openrouter',{action:'test',api_key:k});
+  if(r.ok){
+    const usd=((r.usage||0)/1e6).toFixed(2);
+    const lim=(r.limit||0)>0?`/$${(r.limit).toFixed(2)}`:'（无限额）';
+    $('#or-test-result').textContent=`✓ 有效（已用 $${usd}${lim} · label: ${r.label||'(无名)'})`;
+  }else{$('#or-test-result').textContent='✗ '+(r.error||'失败')}
+}
+async function saveOpenrouter(){
+  const or=KEYS.find(k=>k.code==='openrouter');
+  const k=$('#or-key').value.trim();
+  const overrides={};
+  document.querySelectorAll('.or-model').forEach(el=>{
+    const v=el.value.trim();
+    if(v) overrides[el.dataset.code]=v;
+  });
+  // 启用
+  if(!or.ok && k){
+    const r=await post('/api/openrouter',{action:'enable',api_key:k});
+    if(!r.ok){toast('启用失败：'+(r.error||''),'err');return}
+    if(Object.keys(overrides).length){
+      const r2=await post('/api/openrouter',{action:'set',model_overrides:overrides});
+      if(!r2.ok){toast('保存模型覆盖失败：'+(r2.error||''),'err');return}
+    }
+  }else if(or.ok && (k || Object.keys(overrides).length)){
+    if(k){
+      const r=await post('/api/openrouter',{action:'enable',api_key:k});
+      if(!r.ok){toast('更新 Key 失败：'+(r.error||''),'err');return}
+    }
+    if(Object.keys(overrides).length){
+      const r2=await post('/api/openrouter',{action:'set',model_overrides:overrides});
+      if(!r2.ok){toast('保存模型覆盖失败：'+(r2.error||''),'err');return}
+    }
+  }else{closeModal();return}
+  toast('已保存','ok');
+  closeModal();KEYS=null;render();
+}
+async function disableOpenrouter(){
+  if(!confirm('确定要关闭 OpenRouter 模式吗？\n后续采样会改用 302.AI 模式（若启用）或原生 Key。'))return;
+  const r=await post('/api/openrouter',{action:'disable'});
+  if(r.ok){toast('已关闭','ok');KEYS=null;render()}
+  else{toast('失败：'+(r.error||''),'err')}
+}
 
 /* ===================== 接入引导 ===================== */
 async function vOnboard(){
@@ -1598,20 +1710,35 @@ async function vOnboard(){
     body=`<div style="display:flex;flex-direction:column;gap:14px">
       ${(function(){
         const ai=KEYS.find(k=>k.code==='ai302ai');
-        if(!ai||ai.ok) return '';
-        return `<div class="card" style="box-shadow:0 0 0 1px var(--a700);padding:14px 16px;gap:6px;display:flex;flex-direction:column">
-          <div style="font-size:13.5px;font-weight:500">⚡ 快速开始：启用 302.AI 模式（1 把 Key 解锁全部）</div>
-          <div style="font-size:12.5px;color:var(--t400);line-height:1.6">不用挨个配 9 个平台 Key。在 <a href="https://302.ai" target="_blank" style="color:var(--a300)">302.AI 控制台</a> 申请一把 API Key 即可，模型默认就是 2026-08 最新。</div>
-          <div class="row" style="margin-top:4px;gap:6px;flex-wrap:wrap">
-            <input id="ob-aikey" class="input" type="password" placeholder="sk-...（粘贴 302.AI Key）" style="flex:1;min-width:240px">
-            <button class="btn btn-primary" style="font-size:12.5px" onclick="obEnableAi()">启用 302.AI</button>
-            <button class="btn btn-ghost" style="font-size:12px" onclick="go('settings')">不用，我配原生 Key →</button>
+        const or=KEYS.find(k=>k.code==='openrouter');
+        if(ai&&ai.ok) return '';  // 302.AI 已启用
+        if(or&&or.ok) return '';  // OpenRouter 已启用
+        return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="card" style="box-shadow:0 0 0 1px var(--a700);padding:14px 16px;gap:6px;display:flex;flex-direction:column">
+            <div style="font-size:13.5px;font-weight:500">⚡ 302.AI 模式</div>
+            <div style="font-size:11.5px;color:var(--t400);line-height:1.6">1 把 Key 解锁 <b>9 LLM + 9 搜索 + 豆包</b>。<a href="https://302.ai" target="_blank" style="color:var(--a300)">注册</a>，模型默认 2026-08 最新。</div>
+            <div class="row" style="margin-top:4px;gap:6px;flex-wrap:wrap">
+              <input id="ob-aikey" class="input" type="password" placeholder="sk-...（粘贴 302.AI Key）" style="flex:1;min-width:200px">
+              <button class="btn btn-primary" style="font-size:12.5px" onclick="obEnableAi()">启用</button>
+            </div>
           </div>
+          <div class="card" style="box-shadow:0 0 0 1px var(--a300);padding:14px 16px;gap:6px;display:flex;flex-direction:column">
+            <div style="font-size:13.5px;font-weight:500">🌐 OpenRouter 模式</div>
+            <div style="font-size:11.5px;color:var(--t400);line-height:1.6">1 把 Key 解锁 <b>10 LLM（含 M3 多模态 + bytedance-seed 豆包）</b>。<a href="https://openrouter.ai/keys" target="_blank" style="color:var(--a300)">申请</a>，覆盖 Llama/Mistral/Qwen 等更多西方模型。</div>
+            <div class="row" style="margin-top:4px;gap:6px;flex-wrap:wrap">
+              <input id="ob-orkey" class="input" type="password" placeholder="sk-or-v1-...（粘贴 OpenRouter Key）" style="flex:1;min-width:200px">
+              <button class="btn btn-primary" style="font-size:12.5px" onclick="obEnableOr()">启用</button>
+            </div>
+          </div>
+        </div>
+        <div class="row" style="justify-content:center;gap:8px;margin-top:4px">
+          <span class="muted" style="font-size:11.5px">两个聚合器互斥使用，只配一个即可</span>
+          <button class="btn btn-ghost" style="font-size:12px" onclick="go('settings')">或自己配原生 Key →</button>
         </div>`;
       })()}
       ${noKey?`<div class="card" style="box-shadow:0 0 0 1px var(--a700);padding:14px 16px;gap:6px">
         <div style="font-size:13.5px;font-weight:500">⚠ 还没有配置任何引擎 API Key</div>
-        <div style="font-size:12.5px;color:var(--t400);line-height:1.6">自动引导中的「答案采样」和「AI 推导问题库 / 品牌事实」需要至少一个引擎 Key。<b>推荐先用上面的 302.AI 一键启用</b>，或到「设置」配 9 个平台的 Key。不配置也能创建——但只会做抓站与站点体检，问题库和品牌事实需要手动填写。</div>
+        <div style="font-size:12.5px;color:var(--t400);line-height:1.6">自动引导中的「答案采样」和「AI 推导问题库 / 品牌事实」需要至少一个引擎 Key。<b>推荐先用上面任一聚合器（302.AI 或 OpenRouter）一键启用</b>，或到「设置」配 9 个平台的 Key。不配置也能创建——但只会做抓站与站点体检，问题库和品牌事实需要手动填写。</div>
         <div class="row" style="margin-top:4px">
           <button class="btn btn-secondary" style="font-size:12.5px" onclick="go('settings')">去配置 Key →</button>
           <span class="muted" style="font-size:11.5px">配好后回到这里继续</span></div>

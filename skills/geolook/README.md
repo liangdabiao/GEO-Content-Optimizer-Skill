@@ -1,6 +1,6 @@
 <div align="center">
 
-# Geo**Look**  ·  302.AI 版本 ,项目继承：https://github.com/aigclink/geolook
+# Geo**Look**  ·  302.AI / OpenRouter 版本
 
 **开源的全流程 GEO 实施平台 · 自托管 · 一把 Key 走天下**
 
@@ -89,6 +89,77 @@ r = sample.ask("doubao", "什么是 GEO 优化？", timeout=60)
 ```
 
 详细调研见 [docs/302ai-integration-research.md](docs/302ai-integration-research.md)。
+
+***
+
+## 🌐 OpenRouter 模式（与 302.AI 并列）
+
+> **和 302.AI 互斥使用（只配一个聚合器）**。OpenRouter 是西方主流模型聚合器，**独家拥有 MiniMax-M3 (1M 多模态) + Llama / Mistral / Qwen / Cohere**。
+
+### 为什么再加一个聚合器？
+
+| 维度 | 302.AI | **OpenRouter** |
+|---|---|---|
+| **Key 数量** | 1 把 | 1 把 |
+| **LLM 平台** | 9 个（含豆包全系）| **10 个**（含 bytedance-seed 豆包系列）|
+| **西方主流模型** | 仅 Claude/GPT/Gemini/Perplexity/Grok | **+ Llama / Mistral / Qwen / Cohere / Nova / Gemma** |
+| **独家模型** | 豆包 ark 协议 (`doubao-seed-2-1-turbo-260628`) | **MiniMax-M3** (1M 多模态) + **MiniMax-01** (4M context) + Hailuo 2.3 (视频) + Speech 2.8 (TTS) |
+| **多源搜索** | ✅ 9 provider（bocha/tavily/exa/...）| ❌ 靠模型自带（Perplexity sonar / Claude web_search / GPT-4o search）|
+| **协议** | OpenAI + Anthropic 双协议 | OpenAI 单协议 |
+| **Claude Opus 4.6** | $5 / 1M | **$3-4 / 1M**（DeepInfra 折扣，更便宜 30-50%）|
+| **覆盖场景** | 国内 + 多源搜索 + 豆包原厂 | 海外 + 多模型 + 多模态研究 |
+
+### 配置方法
+
+`.env` 加 3 行（与 302.AI 互斥——**设 OpenRouter 启用时会自动关闭 302.AI**）：
+
+```bash
+OPENROUTER_MODE=1
+OPENROUTER_API_KEY=sk-or-v1-你的OpenRouterKey
+# 可选：覆盖默认模型（不填用 2026-08 最新）
+OPENROUTER_OPENAI_MODEL=openai/gpt-5.5
+OPENROUTER_CLAUDE_MODEL=anthropic/claude-sonnet-5
+OPENROUTER_MINIMAX_MODEL=minimax/minimax-m2.7  # 也能上 minimax/minimax-m3（1M 多模态）
+OPENROUTER_ARK_MODEL=bytedance-seed/seed-2.0-mini  # 豆包系列
+```
+
+申请 OpenRouter Key：<https://openrouter.ai/keys>
+
+### 10 个 LLM 平台覆盖（默认 2026-08 最新）
+
+| 平台 | OpenRouter 模型 ID | 备注 |
+|---|---|---|
+| DeepSeek | `deepseek/deepseek-v4-flash` | |
+| Kimi | `moonshotai/kimi-k3` | |
+| MiniMax | `minimax/minimax-m2.7` | **M3 1M 多模态也支持**：设 `OPENROUTER_MINIMAX_MODEL=minimax/minimax-m3` |
+| GLM | `z-ai/glm-4.7-flash` | 智谱在 OpenRouter 上品牌是 Z.AI |
+| Gemini | `google/gemini-3.5-flash` | |
+| OpenAI | `openai/gpt-5.5` | |
+| Claude | `anthropic/claude-sonnet-5` | |
+| Grok | `x-ai/grok-4.3` | |
+| Perplexity | `perplexity/sonar` | 自带 citations（搜索结果）|
+| 豆包 | `bytedance-seed/seed-2.0-mini` | OpenRouter 上字节用 bytedance-seed 命名 |
+
+> **GLM 独家小贴士**：OpenRouter 上智谱品牌是 **Z.AI**（不是 zhipu），前缀用 `z-ai/`。
+
+### 怎么选？
+
+| 你的主要需求 | 推荐 | 理由 |
+|---|---|---|
+| 国内品牌 / 中文搜索 / 豆包原厂 | **302.AI** | 9 搜索 + 豆包 doubao-seed 全系 |
+| 海外品牌 / 想要 Llama / Mistral / Qwen | **OpenRouter** | 西方模型最全 |
+| 多模态 / 视觉 / 长上下文 | **OpenRouter** | M3 1M context + GPT-5 vision + Claude vision |
+| 极致便宜 + 不需要多源搜索 | **OpenRouter** | Claude Opus 4.6 比 302.AI 还便宜 30-50% |
+| 同时要 9 搜索 + MiniMax-M3 | 互斥二选一 | 用户规则：只配一个聚合器 |
+
+### 联网能力（OpenRouter 没有原生多源搜索）
+
+- **首选 Perplexity sonar**（自带 citations，5-10 条引用源）—— `ask("perplexity", ..., search_provider=None)`
+- **Claude web_search 工具**（海外最强时效）—— 需在 `.env` 加 `OPENROUTER_EXTRA_CLAUDE='{"tools":[{"type":"web_search_20250305"}]}'`
+- **GPT-4o search preview**（OpenAI 自带）—— 设 `OPENROUTER_OPENAI_MODEL=openai/gpt-4o-search-preview`
+- **firecrawl 整页爬**——`sample.search("...", provider="firecrawl", count=5)` 自动带全文
+
+详细调研：[docs/openrouter-integration-research.md](docs/openrouter-integration-research.md)
 
 ***
 
@@ -184,24 +255,25 @@ pip3 install requests beautifulsoup4 lxml
 # 2. 启动看板（自动打开浏览器）
 python3 scripts/geo.py ui        # → http://127.0.0.1:8765
 
-# 3.（推荐）配置 302.AI Key —— 一把 Key 解锁全部 9 个 LLM 平台 + 9 个搜索
+# 3.（推荐）配置聚合器 Key —— 一把 Key 解锁 10 个 LLM 平台
 cp .env.example .env
-# 编辑 .env 加 3 行：
-#   AI302AI_MODE=1
-#   AI302AI_API_KEY=sk-你的302AI密钥
-# 看板「设置 → 引擎与密钥」里点「配置」填入也可，自动写进本地 .env
+# 编辑 .env，二选一：
+#   方案 A（推荐国内）：AI302AI_MODE=1 + AI302AI_API_KEY=sk-你的302AI密钥
+#   方案 B（推荐海外）：OPENROUTER_MODE=1 + OPENROUTER_API_KEY=sk-or-v1-你的OpenRouter密钥
+# 看板「设置 → 引擎与密钥」里点对应卡片的「启用」按钮也可，自动写进本地 .env
 ```
 
 **不配任何 Key 也能用**：自动采样会跳过，改用「导出人工采样表 → 人工/浏览器采样 → 回灌」的流程；抓站、体检、工单、资产等功能不依赖任何 Key。配一个国内引擎 Key（如 DeepSeek/GLM）即可解锁「自动推导问题库/品牌事实」和「AI 初稿」。
 
-### 引擎 Key 的两种配置方式
+### 引擎 Key 的三种配置方式
 
-| 方式                   | 适用                  | 配置                                           |
-| -------------------- | ------------------- | -------------------------------------------- |
-| **A. 302.AI 模式（推荐）** | 想要一把 Key 走天下 + 多源搜索 | `AI302AI_MODE=1` + `AI302AI_API_KEY`         |
-| **B. 多 Key 模式**      | 已有各大平台账号 / 想要直连     | 每个平台 1 个环境变量（见 [.env.example](.env.example)） |
+| 方式                                | 适用                       | 配置                                                |
+| --------------------------------- | ------------------------ | ------------------------------------------------- |
+| **A. 302.AI 模式（推荐国内）**           | 一把 Key + 多源搜索 + 豆包原厂      | `AI302AI_MODE=1` + `AI302AI_API_KEY`              |
+| **B. OpenRouter 模式（推荐海外）**       | MiniMax-M3 多模态 + Llama/Qwen | `OPENROUTER_MODE=1` + `OPENROUTER_API_KEY`        |
+| **C. 多 Key 模式**                   | 已有各大平台账号 / 想要直连          | 每个平台 1 个环境变量（见 [.env.example](.env.example)）     |
 
-两种方式**互斥不冲突**：`AI302AI_MODE=1` 时所有平台都走 302.AI；设为 `0` 或不设时走原多 Key 配置。
+**A / B 互斥不冲突**：两个聚合器只配一个（启用一个会自动关闭另一个）。`AI302AI_MODE=0` 且 `OPENROUTER_MODE=0` 时走 C（多 Key）。
 
 ### 服务器/远程部署
 
@@ -299,6 +371,38 @@ sample.search("latest GEO paper",   provider="exa",   count=5, category="researc
 sample.ask("deepseek", "X 跟 Y 比有什么优势？", search_provider="tavily")
 ```
 
+### OpenRouter 模式 CLI / Python 用法
+
+```bash
+# 检查 OpenRouter 配置
+python3 -c "from scripts import sample; print(sample._openrouter_enabled())"
+
+# 单题多平台对比（10 个全跑）
+python3 -c "from scripts import sample as s; \
+  [print(p, '->', s.ask(p, 'X 跟 Y 比有什么优势？').get('answer','')[:60]) \
+   for p in ['deepseek', 'claude', 'gemini', 'doubao', 'minimax']]"
+
+# 用 MiniMax-M3（1M 多模态，需在 .env 设 OPENROUTER_MINIMAX_MODEL=minimax/minimax-m3）
+python3 -c "from scripts import sample as s; print(s.ask('minimax', '详细分析这段 50KB 报告').get('answer',''))"
+```
+
+```python
+# 直接调 sample 模块的 API
+import sample
+
+# 用 Perplexity sonar（自带 citations，等同 302.AI 搜索效果）
+r = sample.ask("perplexity", "GeoLook GEO 工具")
+print(r["answer"], "引用源:", len(r.get("search_citations", [])))
+
+# 用 GLM（注意 OpenRouter 上是 z-ai/，已在 .env.example 默认配置好）
+sample.ask("glm", "X 跟 Y 比有什么优势？")
+```
+
+**OpenRouter 联网选项**（无 9 搜索 provider，靠模型自带）：
+- `ask("perplexity", ...)` — Perplexity sonar，5-10 条 citations
+- `ask("claude", ..., extra={"tools":[{"type":"web_search_20250305"}]})` — Claude web_search
+- `ask("openai", ...)` 时模型改为 `openai/gpt-4o-search-preview` — GPT 联网
+
 ## 评分依据
 
 六个体检维度全部锚在公开实证数据上，`scripts/audit.py` 是 [references/method.md](references/method.md) 的代码实现。几条最有用的结论：
@@ -372,6 +476,46 @@ docs/             截图与 40 秒演示视频
 详细调研：[docs/302ai-integration-research.md](docs/302ai-integration-research.md)
 架构文档：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 Agent-Direct 模式调研：[docs/agent-skill-mode-research.md](docs/agent-skill-mode-research.md)
+
+### 2026-08-04 · OpenRouter 并列接入（与 302.AI 互斥）
+
+**为什么加 OpenRouter**：西方主流模型最全 + 独家 MiniMax-M3 (1M 多模态) + Llama / Mistral / Qwen + 比 302.AI 更便宜（Claude Opus 4.6 仅 $3-4/1M）。
+
+**核心改动**：
+
+- `OPENROUTER_MODE=1` + `OPENROUTER_API_KEY=sk-or-v1-...`：10/10 LLM 平台全覆盖（含豆包：`bytedance-seed/seed-2.0-mini`）
+- 与 302.AI 互斥使用：UI 启用 OpenRouter 时自动关闭 302.AI（反之亦然）
+- 协议：纯 OpenAI 兼容（OpenRouter 单协议，不支持 Anthropic `messages` 端点）
+- 推荐 header：`HTTP-Referer` + `X-Title`（OpenRouter 排行榜归因，自动加）
+- 4 个模型 ID 修正：GLM 用 `z-ai/` 前缀（不是 `zhipu/`）、Grok 用 `x-ai/grok-4.3`（不是 4.1）、OpenAI 用 `gpt-5.5`、豆包用 `bytedance-seed/seed-2.0-mini`
+- 9 个 LLM 平台默认 2026-08 最新稳定版
+
+**UI 改进**（[ui.html](scripts/ui.html)）：
+
+- 设置页顶部 3 列 grid：302.AI 卡 + OpenRouter 卡 + 运行任务卡（紫色 vs 紫青色边框区分）
+- 接入引导给 2 张并排卡（一键启用任一聚合器）
+- OpenRouter 模态：`testOrKey()` 调 `/api/auth/key` 验证，`saveOpenrouter()` 写 Key + 模型覆盖
+- "高级"折叠区过滤掉两个聚合器行
+
+**`.env` 改键**：原"模式 B（兜底）：各平台原生 Key"改为模式 B，把 OpenRouter 升级为模式 C。
+
+**`ask("doubao", ...)` 早拦截删除**：豆包现在 100% 覆盖（302.AI 走 ark 协议 / OpenRouter 走 bytedance-seed）。
+
+**搜索能力**：OpenRouter 无原生 9 provider，靠 Perplexity sonar（自带 citations）/ Claude web_search / GPT-4o search 三种模型自带能力。
+
+**实测**：
+
+- 2/10 模型实际跑通（DeepSeek + GLM 拿到 GeoLook 正确描述）
+- 8/10 HTTP 402（用户 OpenRouter 试用 Key 余额不足，**不是代码 bug**）
+- 1/10 HTTP 403（Claude 模型在用户区域不可用，OpenRouter 路由决定）
+
+详细调研：[docs/openrouter-integration-research.md](docs/openrouter-integration-research.md)
+
+### 2026-08-04 · 豆包纳入 OpenRouter 覆盖
+
+**误判修正**：之前报告说"豆包在 OpenRouter 上无"是错的。OpenRouter 上字节用 `bytedance-seed/seed-2.0-mini`（不是 `doubao-seed-*` 命名），10/10 平台全打通。
+
+### 2026-08-04 · 引擎与 UI 全面改造
 
 ***
 

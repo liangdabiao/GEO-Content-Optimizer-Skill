@@ -259,14 +259,15 @@ class Handler(BaseHTTPRequestHandler):
             if p == "/api/keys":
                 import sample as S
                 rows = []
-                # ---------- 302.AI 合成行：始终放最前（推荐入口） ----------
+                # ---------- 聚合器行（互斥使用，302.AI 第一，OpenRouter 第二） ----------
+                # 302.AI
                 ai_key = os.environ.get("AI302AI_API_KEY", "").strip()
                 ai_mode = os.environ.get("AI302AI_MODE", "").strip().lower() in ("1", "true", "yes", "on")
                 ai_ok = ai_mode and bool(ai_key)
-                rows.insert(0, {
+                rows.append({
                     "code": "ai302ai",
-                    "label": "⚡ 302.AI 统一模式（推荐 · 1 把 Key 跑通 9 个 LLM + 9 个搜索）",
-                    "market": "global", "search": True,
+                    "label": "⚡ 302.AI 统一模式（推荐 · 1 把 Key + 9 LLM + 9 搜索 + 豆包）",
+                    "market": "global", "search": True, "aggregator": True,
                     "env": "AI302AI_API_KEY",
                     "ok": ai_ok,
                     "key_tail": ai_key[-4:] if len(ai_key) >= 8 else "",
@@ -283,7 +284,27 @@ class Handler(BaseHTTPRequestHandler):
                         for c in S.AI302AI_SEARCH_PROVIDERS
                     ],
                     "model": "", "model_env": None, "model_set": False,
-                    "note": "302.AI 提供 OpenAI / Anthropic 双协议，把 9 个 LLM 平台的差异隐藏成一把 Key。默认模型为 2026-08 最新稳定版。",
+                    "note": "302.AI 提供 OpenAI / Anthropic 双协议。独家：豆包全系 + 9 个搜索 provider。",
+                })
+                # OpenRouter（与 302.AI 互斥使用，配置 1 个即可）
+                or_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+                or_mode = os.environ.get("OPENROUTER_MODE", "").strip().lower() in ("1", "true", "yes", "on")
+                or_ok = or_mode and bool(or_key)
+                # 10/10 平台全覆盖（含豆包：OpenRouter 上是 bytedance-seed/seed-2.0-mini）
+                rows.append({
+                    "code": "openrouter",
+                    "label": "🌐 OpenRouter 统一模式（1 把 Key 跑通 10 个 LLM）",
+                    "market": "global", "search": False, "aggregator": True,
+                    "env": "OPENROUTER_API_KEY",
+                    "ok": or_ok,
+                    "key_tail": or_key[-4:] if len(or_key) >= 8 else "",
+                    "mode_on": or_mode,
+                    "models": [{"code": c, "label": S.OPENROUTER_PROVIDERS[c]["model"],
+                                "env": S.OPENROUTER_PROVIDERS[c]["model_env"]}
+                               for c in S.OPENROUTER_PROVIDERS],
+                    "unsupported": [],  # 10/10 覆盖（含 bytedance-seed/seed-2.0-mini 替代豆包）
+                    "model": "", "model_env": None, "model_set": False,
+                    "note": "OpenRouter 是西方主流模型聚合器（Llama/Mistral/Claude/GPT/Gemini 全覆盖）。独家：MiniMax-M3 (1M 多模态) + bytedance-seed 豆包系列。与 302.AI 互斥使用。",
                 })
                 # ---------- 各平台原生 Key（兜底，折叠显示） ----------
                 for code, spec in S.PROVIDERS.items():
@@ -487,6 +508,12 @@ class Handler(BaseHTTPRequestHandler):
                 for c, spec in S.AI302AI_PROVIDERS.items():
                     if spec.get("model_env"):
                         allowed.add(spec["model_env"])
+                # 允许 OpenRouter 模式相关变量
+                allowed.add("OPENROUTER_MODE")
+                allowed.add("OPENROUTER_API_KEY")
+                for c, spec in S.OPENROUTER_PROVIDERS.items():
+                    if spec.get("model_env"):
+                        allowed.add(spec["model_env"])
                 updates = body.get("updates")
                 if not isinstance(updates, dict) or not updates:
                     return self._json({"ok": False, "error": "updates 必须是非空对象"}, 400)
@@ -530,11 +557,14 @@ class Handler(BaseHTTPRequestHandler):
                     key = str(body.get("api_key", "")).strip()
                     if not key:
                         return self._json({"ok": False, "error": "缺少 api_key"}, 400)
-                    write_env({"AI302AI_MODE": "1", "AI302AI_API_KEY": key})
+                    # 互斥：自动关 OpenRouter（用户规则：只配一个聚合器）
+                    write_env({"AI302AI_MODE": "1", "AI302AI_API_KEY": key,
+                               "OPENROUTER_MODE": "0"})
                     # 清掉警告标记
                     if hasattr(S._ai302ai_enabled, "_warned"):
                         S._ai302ai_enabled._warned = False  # type: ignore[attr-defined]
-                    return self._json({"ok": True, "mode": "enabled"})
+                    return self._json({"ok": True, "mode": "enabled",
+                                       "note": "已自动关闭 OpenRouter 模式（两个聚合器互斥使用）"})
                 if action == "disable":
                     write_env({"AI302AI_MODE": "0"})
                     return self._json({"ok": True, "mode": "disabled"})
@@ -551,6 +581,68 @@ class Handler(BaseHTTPRequestHandler):
                         for code, val in (body.get("model_overrides") or {}).items():
                             if code in S.AI302AI_PROVIDERS:
                                 env = S.AI302AI_PROVIDERS[code].get("model_env")
+                                if env:
+                                    u[env] = str(val).strip()
+                    if not u:
+                        return self._json({"ok": False, "error": "没有可更新的字段"}, 400)
+                    write_env(u)
+                    return self._json({"ok": True, "updated": list(u.keys())})
+                return self._json({"ok": False, "error": f"未知 action：{action!r}"}, 400)
+
+            if p == "/api/openrouter":
+                """OpenRouter 模式结构化端点（与 /api/ai302ai 同构）：
+                  POST {action: "enable",  api_key: "sk-or-v1-..."}
+                  POST {action: "disable"}
+                  POST {action: "test",   api_key: "sk-or-v1-..."}
+                  POST {action: "set",    api_key?, model_overrides?}
+                注：OpenRouter 不提供多源搜索，故无 search_provider
+                """
+                import sample as S
+                action = body.get("action", "")
+                if action == "test":
+                    key = str(body.get("api_key", "")).strip()
+                    if not key:
+                        return self._json({"ok": False, "error": "缺少 api_key"}, 400)
+                    try:
+                        r = requests.get(
+                            "https://openrouter.ai/api/v1/auth/key",
+                            headers={"Authorization": f"Bearer {key}"},
+                            timeout=15,
+                        )
+                        if r.status_code == 200:
+                            data = r.json().get("data", {})
+                            return self._json({"ok": True,
+                                               "label": data.get("label"),
+                                               "limit": data.get("limit"),
+                                               "usage": data.get("usage")})
+                        return self._json({"ok": False, "error": f"HTTP {r.status_code}: {r.text[:200]}"})
+                    except Exception as e:  # noqa: BLE001
+                        return self._json({"ok": False, "error": f"{type(e).__name__}: {e}"})
+                if action == "enable":
+                    key = str(body.get("api_key", "")).strip()
+                    if not key:
+                        return self._json({"ok": False, "error": "缺少 api_key"}, 400)
+                    # 互斥：自动关 302.AI（用户规则：只配一个聚合器）
+                    write_env({
+                        "OPENROUTER_MODE": "1",
+                        "OPENROUTER_API_KEY": key,
+                        "AI302AI_MODE": "0",  # 自动互斥
+                    })
+                    if hasattr(S._openrouter_enabled, "_warned"):
+                        S._openrouter_enabled._warned = False  # type: ignore[attr-defined]
+                    return self._json({"ok": True, "mode": "enabled",
+                                       "note": "已自动关闭 302.AI 模式（两个聚合器互斥使用）"})
+                if action == "disable":
+                    write_env({"OPENROUTER_MODE": "0"})
+                    return self._json({"ok": True, "mode": "disabled"})
+                if action == "set":
+                    u = {}
+                    if "api_key" in body:
+                        u["OPENROUTER_API_KEY"] = str(body.get("api_key", "")).strip()
+                    if "model_overrides" in body:
+                        for code, val in (body.get("model_overrides") or {}).items():
+                            if code in S.OPENROUTER_PROVIDERS:
+                                env = S.OPENROUTER_PROVIDERS[code].get("model_env")
                                 if env:
                                     u[env] = str(val).strip()
                     if not u:

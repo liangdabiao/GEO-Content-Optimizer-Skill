@@ -172,6 +172,71 @@ AI302AI_PROVIDERS = {
 }
 
 
+# ============================================================
+# OpenRouter 模式（与 302.AI 并列：用户只配一个聚合器）
+# 端点：https://openrouter.ai/api/v1（纯 OpenAI 兼容协议）
+# 注意：OpenRouter 上没有 Doubao，豆包在 OpenRouter 模式下被自动跳过
+# ============================================================
+OPENROUTER_BASE = "https://openrouter.ai/api/v1"
+OPENROUTER_PROVIDERS = {
+    # DeepSeek：v4-flash 是 2026 最新轻量档（v4-pro 太重，采样不划算）
+    "deepseek":   {"model": "deepseek/deepseek-v4-flash",   "model_env": "OPENROUTER_DEEPSEEK_MODEL"},
+    # Kimi：k3 已是 2026 stable（不再 preview）
+    "kimi":       {"model": "moonshotai/kimi-k3",           "model_env": "OPENROUTER_KIMI_MODEL"},
+    # MiniMax：M2.7 是 2026 性价比档；M3 是 1M 多模态独家
+    "minimax":    {"model": "minimax/minimax-m2.7",         "model_env": "OPENROUTER_MINIMAX_MODEL"},
+    # GLM：智谱在 OpenRouter 上挂的是 Z.AI 品牌，前缀 z-ai/（不是 zhipu/）
+    # 4.7-flash 是 2026 性价比档，glm-5.2 是 2026-08 旗舰
+    "glm":        {"model": "z-ai/glm-4.7-flash",           "model_env": "OPENROUTER_GLM_MODEL"},
+    # Gemini：3.5-flash 仍是 2026 稳定轻量档
+    "gemini":     {"model": "google/gemini-3.5-flash",      "model_env": "OPENROUTER_GEMINI_MODEL"},
+    # OpenAI：5.5 是 2026-08 旗舰；5 是稳定档；4o 是兜底（全部走 OpenRouter 会有 402）
+    # 用 5.5 作为 2026-08 默认（之前用 gpt-5.4-mini 实际不存在）
+    "openai":     {"model": "openai/gpt-5.5",               "model_env": "OPENROUTER_OPENAI_MODEL"},
+    # Claude：sonnet-5 是 2026 主力（opus-5 太贵）
+    "claude":     {"model": "anthropic/claude-sonnet-5",    "model_env": "OPENROUTER_CLAUDE_MODEL"},
+    # Grok：4.3 是 2026 稳定档（4.1 / 4.5 在 OpenRouter 上 ID 不一致）
+    "grok":       {"model": "x-ai/grok-4.3",                "model_env": "OPENROUTER_GROK_MODEL"},
+    # Perplexity：sonar 是基础档，pro/reasoning 在 .env 覆盖
+    "perplexity": {"model": "perplexity/sonar",             "model_env": "OPENROUTER_PERPLEXITY_MODEL"},
+    # 豆包：OpenRouter 上是 bytedance-seed/seed-2.0-mini（不是 doubao-seed-*）
+    # 注：302.AI 模式下仍走 ark 协议的 doubao-seed-2-1-turbo-260628
+    "doubao":     {"model": "bytedance-seed/seed-2.0-mini", "model_env": "OPENROUTER_ARK_MODEL"},
+}
+_OPENROUTER_PROVIDER_CODES = frozenset(OPENROUTER_PROVIDERS.keys())
+
+
+def _openrouter_enabled() -> bool:
+    """OpenRouter 模式开关：OPENROUTER_MODE=1 且 Key 存在才真正开启。
+
+    用户使用规则：302.AI 和 OpenRouter 互斥（只配一个聚合器）。
+    两者都开启时优先 302.AI（因为有豆包 + 9 个搜索 provider）。
+    安全护栏：设了 OPENROUTER_MODE=1 但 Key 留空时——不会静默失败，
+    而是警告一次并自动回退到原生 Key 模式。
+    """
+    flag = os.environ.get("OPENROUTER_MODE", "").strip().lower() in ("1", "true", "yes", "on")
+    if not flag:
+        return False
+    if not os.environ.get("OPENROUTER_API_KEY", "").strip():
+        # 用 getattr 兜底：函数对象首次 .属性 = 值会 AttributeError
+        if not getattr(_openrouter_enabled, "_warned", False):
+            print(
+                "[geolook] ⚠  OPENROUTER_MODE=1 但 OPENROUTER_API_KEY 为空 —— "
+                "OpenRouter 模式已自动关闭，回退到「原生 Key」。\n"
+                "[geolook]    要启用 OpenRouter：编辑 .env 填入 OPENROUTER_API_KEY=sk-or-v1-...\n"
+                "[geolook]    想用 302.AI：把 AI302AI_MODE 设为 1（替代 OpenRouter）。",
+                file=sys.stderr,
+            )
+            _openrouter_enabled._warned = True  # 后续调用不再警告
+        return False
+    return True
+
+
+# OpenRouter 模式下不可用的平台（豆包；OpenRouter 上无对应模型）
+def _openrouter_supports(code: str) -> bool:
+    return code in _OPENROUTER_PROVIDER_CODES
+
+
 def _ai302ai_enabled() -> bool:
     """302.AI 模式开关：AI302AI_MODE=1 且 Key 存在才真正开启。
 
@@ -351,10 +416,15 @@ def search_then_ask(platform: str, question: str,
 
 def _pick_endpoint(platform: str) -> tuple[dict, str]:
     """返回 (运行时 p 视图, key)。
-    302.AI 模式下：base 强制 AI302AI_BASE，model 用 AI302AI_*_MODEL 覆盖，protocol 沿用（ark/anthropic）。
-    原版模式下：完全沿用 PROVIDERS 里的配置。
+
+    路由优先级（**互斥使用**，用户只配一个聚合器）：
+    1. 302.AI 模式（_ai302ai_enabled()）→ base=AI302AI_BASE，model 用 AI302AI_* 覆盖
+    2. OpenRouter 模式（_openrouter_enabled()）→ base=OPENROUTER_BASE，model 用 OPENROUTER_* 覆盖
+       平台不在 OpenRouter 覆盖范围（豆包）→ 自动回退到原生
+    3. 原生模式：完全沿用 PROVIDERS 里的配置
     """
     p = dict(PROVIDERS[platform])  # 复制避免污染全局
+    # 优先级 1：302.AI（用户用 302.AI 时优先；含豆包）
     if _ai302ai_enabled():
         a = AI302AI_PROVIDERS.get(platform)
         if a:
@@ -363,6 +433,18 @@ def _pick_endpoint(platform: str) -> tuple[dict, str]:
             key = os.environ.get("AI302AI_API_KEY", "")
             p["key_env"] = "__AI302AI__"  # 给 available()/ask() 看的占位
             return p, key
+    # 优先级 2：OpenRouter（用户用 OpenRouter 时；豆包不在内，自动跳过）
+    if _openrouter_enabled():
+        a = OPENROUTER_PROVIDERS.get(platform)
+        if a:
+            p["base"] = OPENROUTER_BASE
+            p["model"] = os.environ.get(a["model_env"], a["model"])
+            # OpenRouter 推荐带两个 header（用于排行榜/归因，可选但建议）
+            key = os.environ.get("OPENROUTER_API_KEY", "")
+            p["key_env"] = "__OPENROUTER__"  # 给 available()/ask() 看的占位
+            p["protocol"] = "openai"  # OpenRouter 纯 OpenAI 协议
+            return p, key
+    # 优先级 3：原生 Key
     return p, os.environ.get(p.get("key_env", ""), "")
 
 
@@ -402,8 +484,13 @@ def available(platform: str) -> bool:
     p = PROVIDERS.get(platform)
     if not p:
         return False
+    # 优先级 1：302.AI 模式
     if _ai302ai_enabled():
         return bool(os.environ.get("AI302AI_API_KEY")) and platform in AI302AI_PROVIDERS
+    # 优先级 2：OpenRouter 模式（豆包不在 OpenRouter，自动 False）
+    if _openrouter_enabled():
+        return bool(os.environ.get("OPENROUTER_API_KEY")) and platform in OPENROUTER_PROVIDERS
+    # 优先级 3：原生 Key
     return bool(os.environ.get(p["key_env"]))
 
 
@@ -490,14 +577,19 @@ def ask(platform: str, question: str, timeout: int = 120) -> dict:
     if not key:
         if _ai302ai_enabled():
             return {"ok": False, "answer": "", "error": "缺少环境变量 AI302AI_API_KEY（或未启用 302.AI 模式）"}
+        if _openrouter_enabled():
+            return {"ok": False, "answer": "", "error": "缺少环境变量 OPENROUTER_API_KEY（或未启用 OpenRouter 模式）"}
         return {"ok": False, "answer": "", "error": f"缺少环境变量 {p['key_env']}"}
     if p.get("protocol") == "ark":
-        # 302.AI 模式下没有 ark 协议的 Responses+web_search；
+        # 302.AI / OpenRouter 模式下没有 ark 协议的 Responses+web_search；
         # 自动用 search_then_ask 走"302.AI 搜索 + 任何 LLM"组合补回联网能力
-        if _ai302ai_enabled():
+        if _ai302ai_enabled() or _openrouter_enabled():
             return search_then_ask(platform, question, timeout=timeout)
         return ask_ark(p, key, question, timeout)
     if p.get("protocol") == "anthropic":
+        # 302.AI 支持 Anthropic 协议（v1/messages）；OpenRouter 不支持
+        if _openrouter_enabled():
+            return {"ok": False, "answer": "", "error": "OpenRouter 不支持 Anthropic 协议，请改用 'claude'（实际走 OpenAI 协议）"}
         return ask_anthropic(p, key, question, timeout)
     return _ask_chat(p, key, question, timeout)
 
@@ -510,12 +602,17 @@ def _ask_chat(p: dict, key: str, question: str, timeout: int) -> dict:
         "temperature": 0.7,
     }
     body.update(p.get("extra", {}))
+    # OpenRouter 模式：必须带 HTTP-Referer / X-Title（OpenRouter 排行榜归因）
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    if p.get("key_env") == "__OPENROUTER__":
+        headers["HTTP-Referer"] = "https://github.com/aigclink/geolook"
+        headers["X-Title"] = "GeoLook GEO Toolchain"
     delays = (1, 3)  # 超时/429/5xx 指数退避重试 2 次；其他错误（4xx 等）不重试
     for attempt in range(len(delays) + 1):
         try:
             r = requests.post(
                 f"{p['base']}/chat/completions",
-                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                headers=headers,
                 json=body,
                 timeout=timeout,
             )
