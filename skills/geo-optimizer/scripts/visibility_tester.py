@@ -34,7 +34,11 @@ def test_perplexity(brand, keyword, api_key, query_template=None):
         return {"error": "requests library not installed. Run: pip install requests"}
 
     prompt = _build_prompt(keyword, query_template)
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "X-Pplx-Integration": "geo-content-optimizer-skill",
+    }
     payload = {
         "model": "sonar-pro",
         "messages": [{"role": "user", "content": prompt}],
